@@ -24,8 +24,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "pdfkit": "^0.15.0",
-    "swagger-ui-express": "^5.0.1",
-    "yamljs": "^0.3.0"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -36,7 +35,7 @@
     "@types/node": "^22.7.4",
     "@types/pdfkit": "^0.13.4",
     "@types/swagger-ui-express": "^4.1.7",
-    "@types/yamljs": "^0.2.34",
+    "eslint-plugin-security": "^4.0.1",
     "prisma": "^5.20.0",
     "tsx": "^4.19.1",
     "typescript": "^5.4.5"
