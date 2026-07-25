@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import DashboardHeader from "@/components/dashboard/header";
 import StatCard from "@/components/dashboard/stat-card";
@@ -24,23 +25,25 @@ export default function AdminDashboard() {
     if (!user) return;
     async function fetchStats() {
       try {
-        const [usersRes, kunjunganRes, obatRes] = await Promise.all([
-          apiFetch<{ data: { role: string }[] }>("/api/users?limit=1000"),
-          apiFetch<{ data: { status: string }[] }>("/api/kunjungan?limit=1000"),
-          apiFetch<{ data: unknown[] }>("/api/obat"),
+        // MED-03 fix: use pagination.total instead of counting array items
+        const [usersRes, kunjunganRes, kunjunganMenungguRes, obatRes] = await Promise.all([
+          apiFetch<any>("/api/users?limit=1"),
+          apiFetch<any>("/api/kunjungan?limit=1"),
+          apiFetch<any>("/api/kunjungan?limit=1&status=MENUNGGU"),
+          apiFetch<any>("/api/obat"),
         ]);
 
-        const users = (usersRes as any).data || [];
-        const kunjungan = (kunjunganRes as any).data || [];
-        const obat = (obatRes as any).data || [];
+        // Get role breakdown (still need to fetch for dokter/pasien split — limit to reasonable number)
+        const roleRes = await apiFetch<any>("/api/users?limit=500");
+        const users = roleRes.data || [];
 
         setStats({
-          totalUsers: users.length,
+          totalUsers: usersRes.pagination?.total ?? 0,
           totalDokter: users.filter((u: any) => u.role === "DOKTER").length,
           totalPasien: users.filter((u: any) => u.role === "PASIEN").length,
-          totalKunjungan: kunjungan.length,
-          kunjunganMenunggu: kunjungan.filter((k: any) => k.status === "MENUNGGU").length,
-          totalObat: obat.length,
+          totalKunjungan: kunjunganRes.pagination?.total ?? 0,
+          kunjunganMenunggu: kunjunganMenungguRes.pagination?.total ?? 0,
+          totalObat: (obatRes.data || []).length,
         });
       } catch {
         // Stats optional — fail silently
@@ -60,7 +63,7 @@ export default function AdminDashboard() {
         title="Dashboard Admin"
         subtitle={`Selamat datang, ${user.nama}`}
       />
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-6 lg:p-8">
         {/* Stats grid */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           <StatCard
@@ -86,23 +89,23 @@ export default function AdminDashboard() {
           />
         </div>
 
-        {/* Quick actions */}
+        {/* Quick actions — HIGH-06 fix: corrected hrefs */}
         <div className="bg-white rounded-[16px] border border-[#F0F0F5] p-6">
           <h2 className="text-[16px] font-semibold text-[#1D1D1F] mb-4">Aksi Cepat</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: "Tambah Dokter", href: "/dashboard/admin/users", color: "#5856D6" },
-              { label: "Kelola Obat", href: "/dashboard/admin/obat", color: "#30B86A" },
-              { label: "Lihat Kunjungan", href: "/dashboard/admin/users", color: "#0066CC" },
-              { label: "Audit Log", href: "/dashboard/admin/audit", color: "#FF9F0A" },
+              { label: "Tambah Dokter", href: "/dashboard/admin/users" },
+              { label: "Kelola Obat", href: "/dashboard/admin/obat" },
+              { label: "Lihat Kunjungan", href: "/dashboard/admin/kunjungan" }, // fixed
+              { label: "Audit Log", href: "/dashboard/admin/audit" },
             ].map((a) => (
-              <a
+              <Link
                 key={a.label}
                 href={a.href}
                 className="flex items-center justify-center px-4 py-3 rounded-xl border border-[#F0F0F5] text-[14px] font-medium text-[#1D1D1F] hover:bg-[#F5F5F7] transition-colors text-center"
               >
                 {a.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>

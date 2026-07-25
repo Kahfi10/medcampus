@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, Response, NextFunction } from "express";
 import { body, param, query } from "express-validator";
 import { validationResult } from "express-validator";
 import { prisma } from "../utils/prisma";
@@ -11,7 +11,7 @@ const router = Router();
 router.use(authenticate);
 
 /** GET /api/users — ADMIN only */
-router.get("/", authorize("ADMIN"), async (req: AuthRequest, res: Response, next) => {
+router.get("/", authorize("ADMIN"), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { page = "1", limit = "10", role, search } = req.query as Record<string, string>;
     const skip = (Number(page) - 1) * Number(limit);
@@ -59,7 +59,7 @@ router.post(
     body("password").isLength({ min: 8 }),
     body("role").isIn(["DOKTER", "ADMIN"]).withMessage("Role harus DOKTER atau ADMIN."),
   ],
-  async (req: AuthRequest, res: Response, next) => {
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.mapped() }); return; }
@@ -81,7 +81,7 @@ router.post(
 );
 
 /** GET /api/users/:id */
-router.get("/:id", async (req: AuthRequest, res: Response, next) => {
+router.get("/:id", async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     // Non-admin can only view own profile
@@ -108,7 +108,7 @@ router.put(
     body("golDarah").optional().trim().isIn(["A", "B", "AB", "O", ""]),
     body("alergi").optional().trim(),
   ],
-  async (req: AuthRequest, res: Response, next) => {
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       if (req.user!.role !== "ADMIN" && req.user!.userId !== id) {
@@ -136,7 +136,7 @@ router.put(
 );
 
 /** DELETE /api/users/:id — soft delete, ADMIN only */
-router.delete("/:id", authorize("ADMIN"), async (req: AuthRequest, res: Response, next) => {
+router.delete("/:id", authorize("ADMIN"), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     if (id === req.user!.userId) throw new AppError(400, "Tidak dapat menghapus akun sendiri.");
@@ -149,4 +149,5 @@ router.delete("/:id", authorize("ADMIN"), async (req: AuthRequest, res: Response
 });
 
 export default router;
+
 

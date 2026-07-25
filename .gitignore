@@ -3,7 +3,16 @@ node_modules
 .next
 dist
 build
+
+# Environment files — explicit list to avoid missing any pattern
+.env
 *.env
 .env.local
 .env.production
+.env.development
+.env.test
+apps/server/.env
+apps/client/.env.local
+apps/client/.env.production
+
 *.log

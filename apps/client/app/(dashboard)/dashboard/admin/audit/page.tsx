@@ -6,12 +6,29 @@ import DashboardHeader from "@/components/dashboard/header";
 import DataTable from "@/components/dashboard/data-table";
 import { apiFetch } from "@/lib/auth";
 
+// HIGH-04 fix: complete AKSI_COLOR with all action types from audit.ts
 const AKSI_COLOR: Record<string, string> = {
-  LOGIN_SUCCESS: "#30B86A", LOGIN_FAILED: "#FF3B30", LOGOUT: "#6E6E73",
-  ACCESS_DENIED: "#FF3B30", REKAM_MEDIS_ACCESSED: "#0066CC",
-  REKAM_MEDIS_CREATED: "#30B86A", KUNJUNGAN_CREATED: "#0066CC",
-  USER_CREATED: "#5856D6", USER_DELETED: "#FF3B30", REGISTER: "#30B86A",
+  LOGIN_SUCCESS: "#30B86A",
+  LOGIN_FAILED: "#FF3B30",
+  LOGOUT: "#6E6E73",
+  REGISTER: "#30B86A",
+  ACCESS_DENIED: "#FF3B30",
+  REKAM_MEDIS_ACCESSED: "#0066CC",
+  REKAM_MEDIS_CREATED: "#30B86A",
+  REKAM_MEDIS_UPDATED: "#FF9F0A",
+  KUNJUNGAN_CREATED: "#0066CC",
+  KUNJUNGAN_STATUS_UPDATED: "#FF9F0A",
+  USER_CREATED: "#5856D6",
+  USER_UPDATED: "#FF9F0A",
+  USER_DELETED: "#FF3B30",
+  ROLE_CHANGED: "#FF3B30",
+  PASSWORD_CHANGED: "#FF9F0A",
+  OBAT_CREATED: "#30B86A",
+  OBAT_UPDATED: "#FF9F0A",
+  OBAT_DELETED: "#FF3B30",
 };
+
+const ALL_AKSI = Object.keys(AKSI_COLOR);
 
 export default function AdminAuditPage() {
   const { user, loading } = useAuth({ requiredRole: "ADMIN" });
@@ -87,7 +104,7 @@ export default function AdminAuditPage() {
             <select value={filterAksi} onChange={e => { setFilterAksi(e.target.value); setPage(1); }}
               className="h-10 px-4 rounded-xl border border-[#D8D8DC] bg-[#F5F5F7] text-[14px] focus:outline-none focus:ring-2 focus:ring-[#0066CC]/30">
               <option value="">Semua Aksi</option>
-              {["LOGIN_SUCCESS", "LOGIN_FAILED", "LOGOUT", "ACCESS_DENIED", "REKAM_MEDIS_ACCESSED", "REKAM_MEDIS_CREATED", "KUNJUNGAN_CREATED", "USER_CREATED", "USER_DELETED", "REGISTER"].map(a => (
+              {ALL_AKSI.map(a => (
                 <option key={a} value={a}>{a}</option>
               ))}
             </select>

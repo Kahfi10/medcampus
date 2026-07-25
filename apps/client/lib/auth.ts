@@ -8,6 +8,9 @@ export interface AuthUser {
   nim?: string;
   nip?: string;
   telepon?: string;
+  // MED-01 fix: add missing fields
+  golDarah?: string;
+  alergi?: string;
 }
 
 export function getToken(): string | null {
@@ -44,10 +47,13 @@ export async function apiFetch<T = unknown>(
   options?: RequestInit
 ): Promise<T> {
   const token = getToken();
+  const hasBody = !!options?.body;
+
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      // MED-16 fix: only send Content-Type when request has a body
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },

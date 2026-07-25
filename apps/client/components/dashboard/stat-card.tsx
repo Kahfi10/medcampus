@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface StatCardProps {
@@ -5,7 +6,7 @@ interface StatCardProps {
   value: string | number;
   sub?: string;
   color?: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
 }
 
 export default function StatCard({ label, value, sub, color = "#0066CC", icon }: StatCardProps) {

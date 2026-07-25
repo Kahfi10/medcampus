@@ -144,7 +144,9 @@ export default function PasienKunjunganPage() {
             <label className="block text-[13px] font-semibold text-[#1D1D1F] mb-1.5">Keluhan</label>
             <textarea required rows={4} placeholder="Deskripsikan keluhan kamu..." value={form.keluhan}
               onChange={e => setForm({ ...form, keluhan: e.target.value })}
+              maxLength={500}
               className="w-full px-4 py-3 rounded-xl border border-[#D8D8DC] bg-[#F5F5F7] text-[15px] resize-none focus:outline-none focus:ring-2 focus:ring-[#0066CC]/30 focus:border-[#0066CC]" />
+            <p className="text-[12px] text-[#6E6E73] text-right mt-1">{form.keluhan.length}/500</p>
           </div>
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="secondary" className="flex-1" onClick={() => setModalOpen(false)}>Batal</Button>

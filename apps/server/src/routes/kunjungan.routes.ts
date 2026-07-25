@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, Response, NextFunction } from "express";
 import { body } from "express-validator";
 import { validationResult } from "express-validator";
 import { prisma } from "../utils/prisma";
@@ -10,7 +10,7 @@ const router = Router();
 router.use(authenticate);
 
 /** GET /api/kunjungan — ADMIN/DOKTER */
-router.get("/", authorize("ADMIN", "DOKTER"), async (req: AuthRequest, res: Response, next) => {
+router.get("/", authorize("ADMIN", "DOKTER"), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { status, page = "1", limit = "10" } = req.query as Record<string, string>;
     const skip = (Number(page) - 1) * Number(limit);
@@ -32,7 +32,7 @@ router.get("/", authorize("ADMIN", "DOKTER"), async (req: AuthRequest, res: Resp
 });
 
 /** GET /api/kunjungan/saya — PASIEN only */
-router.get("/saya", authorize("PASIEN"), async (req: AuthRequest, res: Response, next) => {
+router.get("/saya", authorize("PASIEN"), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const kunjungan = await prisma.kunjungan.findMany({
       where: { pasienId: req.user!.userId },
@@ -51,7 +51,7 @@ router.post(
     body("tanggal").notEmpty().isISO8601().withMessage("Tanggal tidak valid."),
     body("keluhan").trim().notEmpty().isLength({ min: 5, max: 500 }).withMessage("Keluhan harus 5–500 karakter."),
   ],
-  async (req: AuthRequest, res: Response, next) => {
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.mapped() }); return; }
@@ -84,7 +84,7 @@ router.post(
 /** PUT /api/kunjungan/:id/status — DOKTER */
 router.put("/:id/status", authorize("DOKTER"), [
   body("status").isIn(["DIPROSES", "SELESAI", "DIBATALKAN"]).withMessage("Status tidak valid."),
-], async (req: AuthRequest, res: Response, next) => {
+], async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.mapped() }); return; }
@@ -100,7 +100,7 @@ router.put("/:id/status", authorize("DOKTER"), [
 });
 
 /** DELETE /api/kunjungan/:id — PASIEN cancels own */
-router.delete("/:id", authorize("PASIEN"), async (req: AuthRequest, res: Response, next) => {
+router.delete("/:id", authorize("PASIEN"), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const kunjungan = await prisma.kunjungan.findUnique({ where: { id: req.params.id as string } });
     if (!kunjungan) throw new AppError(404, "Kunjungan tidak ditemukan.");
@@ -119,4 +119,5 @@ router.delete("/:id", authorize("PASIEN"), async (req: AuthRequest, res: Respons
 });
 
 export default router;
+
 

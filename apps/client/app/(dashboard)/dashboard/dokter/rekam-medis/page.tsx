@@ -1,18 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import DashboardHeader from "@/components/dashboard/header";
 import DataTable from "@/components/dashboard/data-table";
 import Modal from "@/components/dashboard/modal";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/auth";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function DokterRekamMedisPage() {
+// Inner component that uses useSearchParams (must be wrapped in Suspense)
+function DokterRekamMedisInner() {
   const { user, loading } = useAuth({ requiredRole: "DOKTER" });
   const router = useRouter();
   const searchParams = useSearchParams();
+  const toast = useToast();
   const kunjunganId = searchParams.get("kunjunganId");
   const pasienName = searchParams.get("pasien");
 
@@ -188,5 +192,20 @@ export default function DokterRekamMedisPage() {
         )}
       </Modal>
     </>
+  );
+}
+
+// Exported page wraps inner component in Suspense (required for useSearchParams in Next.js 14)
+export default function DokterRekamMedisPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 p-8 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-64 w-full rounded-[16px]" />
+      </div>
+    }>
+      <DokterRekamMedisInner />
+    </Suspense>
   );
 }

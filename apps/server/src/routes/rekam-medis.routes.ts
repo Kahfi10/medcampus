@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, Response, NextFunction } from "express";
 import { body } from "express-validator";
 import { validationResult } from "express-validator";
 import { prisma } from "../utils/prisma";
@@ -10,7 +10,7 @@ const router = Router();
 router.use(authenticate);
 
 /** GET /api/rekam-medis — ADMIN/DOKTER */
-router.get("/", authorize("ADMIN", "DOKTER"), async (req: AuthRequest, res: Response, next) => {
+router.get("/", authorize("ADMIN", "DOKTER"), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { page = "1", limit = "10" } = req.query as Record<string, string>;
     const skip = (Number(page) - 1) * Number(limit);
@@ -35,7 +35,7 @@ router.get("/", authorize("ADMIN", "DOKTER"), async (req: AuthRequest, res: Resp
 });
 
 /** GET /api/rekam-medis/saya — PASIEN */
-router.get("/saya", authorize("PASIEN"), async (req: AuthRequest, res: Response, next) => {
+router.get("/saya", authorize("PASIEN"), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = await prisma.rekamMedis.findMany({
       where: { kunjungan: { pasienId: req.user!.userId } },
@@ -51,7 +51,7 @@ router.get("/saya", authorize("PASIEN"), async (req: AuthRequest, res: Response,
 });
 
 /** GET /api/rekam-medis/:id — with IDOR protection */
-router.get("/:id", async (req: AuthRequest, res: Response, next) => {
+router.get("/:id", async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const rekam = await prisma.rekamMedis.findUnique({
       where: { id: req.params.id as string },
@@ -99,7 +99,7 @@ router.post(
     body("catatan").optional().trim().isLength({ max: 2000 }),
     body("resepObat").optional().isArray(),
   ],
-  async (req: AuthRequest, res: Response, next) => {
+  async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) { res.status(422).json({ success: false, errors: errors.mapped() }); return; }
@@ -111,22 +111,50 @@ router.post(
       if (!kunjungan) throw new AppError(404, "Kunjungan tidak ditemukan.");
       if (kunjungan.status !== "DIPROSES") throw new AppError(400, "Kunjungan harus berstatus DIPROSES.");
 
-      const rekam = await prisma.rekamMedis.create({
-        data: {
-          kunjunganId,
-          dokterId: req.user!.userId,
-          diagnosa,
-          tindakan,
-          catatan: catatan ?? null,
-          resepObat: resepObat?.length
-            ? { create: resepObat.map((r: { obatId: string; jumlah: number; aturanPakai: string }) => ({ obatId: r.obatId, jumlah: r.jumlah, aturanPakai: r.aturanPakai })) }
-            : undefined,
-        },
-        include: { resepObat: { include: { obat: true } } },
-      });
+      // HIGH-03: Guard against duplicate rekam medis on same kunjungan
+      const existing = await prisma.rekamMedis.findUnique({ where: { kunjunganId } });
+      if (existing) throw new AppError(409, "Rekam medis untuk kunjungan ini sudah ada.");
 
-      // Auto-complete kunjungan
-      await prisma.kunjungan.update({ where: { id: kunjunganId }, data: { status: "SELESAI" } });
+      // Validate stok obat before transaction (CRIT-06)
+      if (resepObat?.length) {
+        for (const r of resepObat as { obatId: string; jumlah: number; aturanPakai: string }[]) {
+          const obat = await prisma.obat.findUnique({ where: { id: r.obatId } });
+          if (!obat) throw new AppError(404, `Obat dengan ID ${r.obatId} tidak ditemukan.`);
+          if (obat.stok < r.jumlah) throw new AppError(400, `Stok obat "${obat.nama}" tidak mencukupi. Stok tersedia: ${obat.stok}.`);
+        }
+      }
+
+      // CRIT-06: Use transaction to atomically create rekam medis + decrement stok + update kunjungan
+      const rekam = await prisma.$transaction(async (tx) => {
+        const created = await tx.rekamMedis.create({
+          data: {
+            kunjunganId,
+            dokterId: req.user!.userId,
+            diagnosa,
+            tindakan,
+            catatan: catatan ?? null,
+            resepObat: resepObat?.length
+              ? { create: resepObat.map((r: { obatId: string; jumlah: number; aturanPakai: string }) => ({ obatId: r.obatId, jumlah: r.jumlah, aturanPakai: r.aturanPakai })) }
+              : undefined,
+          },
+          include: { resepObat: { include: { obat: true } } },
+        });
+
+        // Decrement stok for each resep obat
+        if (resepObat?.length) {
+          for (const r of resepObat as { obatId: string; jumlah: number }[]) {
+            await tx.obat.update({
+              where: { id: r.obatId },
+              data: { stok: { decrement: r.jumlah } },
+            });
+          }
+        }
+
+        // Auto-complete kunjungan
+        await tx.kunjungan.update({ where: { id: kunjunganId }, data: { status: "SELESAI" } });
+
+        return created;
+      });
       await createAuditLog({ userId: req.user!.userId, aksi: "REKAM_MEDIS_CREATED", detail: `Created rekam-medis: ${rekam.id}`, ipAddress: req.ip });
 
       res.status(201).json({ success: true, message: "Rekam medis berhasil dibuat.", data: rekam });
@@ -135,4 +163,5 @@ router.post(
 );
 
 export default router;
+
 

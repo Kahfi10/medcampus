@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getUser, getToken, clearAuth, AuthUser, apiFetch } from "@/lib/auth";
 
 interface UseAuthOptions {
   requiredRole?: "ADMIN" | "DOKTER" | "PASIEN";
-  redirectTo?: string;
 }
 
 export function useAuth(options?: UseAuthOptions) {
@@ -14,23 +13,35 @@ export function useAuth(options?: UseAuthOptions) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await apiFetch<{ data: AuthUser }>("/api/auth/me");
+      const serverUser = res.data;
+      localStorage.setItem("user", JSON.stringify(serverUser));
+      setUser(serverUser);
+      return serverUser;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     async function verify() {
       const token = getToken();
       const cached = getUser();
 
+      // CRIT-04 fix: always call setLoading(false) regardless of path
       if (!token || !cached) {
         clearAuth();
+        setLoading(false);
         router.replace("/login");
         return;
       }
 
       try {
-        // Verify token is still valid with server
         const res = await apiFetch<{ data: AuthUser }>("/api/auth/me");
         const serverUser = res.data;
 
-        // Update local cache
         localStorage.setItem("user", JSON.stringify(serverUser));
         setUser(serverUser);
 
@@ -41,16 +52,42 @@ export function useAuth(options?: UseAuthOptions) {
             DOKTER: "/dashboard/dokter",
             PASIEN: "/dashboard/pasien",
           };
+          setLoading(false);
           router.replace(redirectMap[serverUser.role] || "/login");
           return;
         }
       } catch {
+        // CRIT-05 partial fix: attempt token refresh before clearing
+        const refreshToken = localStorage.getItem("refreshToken");
+        if (refreshToken) {
+          try {
+            const refreshRes = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/auth/refresh`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ refreshToken }),
+              }
+            );
+            if (refreshRes.ok) {
+              const data = await refreshRes.json();
+              localStorage.setItem("accessToken", data.data.accessToken);
+              localStorage.setItem("refreshToken", data.data.refreshToken);
+              // Retry verify
+              await verify();
+              return;
+            }
+          } catch {
+            // Refresh also failed
+          }
+        }
         clearAuth();
+        setLoading(false);
         router.replace("/login");
         return;
-      } finally {
-        setLoading(false);
       }
+
+      setLoading(false);
     }
 
     verify();
@@ -66,5 +103,5 @@ export function useAuth(options?: UseAuthOptions) {
     router.replace("/login");
   };
 
-  return { user, loading, logout };
+  return { user, loading, logout, refreshUser };
 }

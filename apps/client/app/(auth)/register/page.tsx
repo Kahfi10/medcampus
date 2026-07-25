@@ -48,6 +48,11 @@ export default function RegisterPage() {
       setError("Password minimal 8 karakter.");
       return;
     }
+    // MED-06: match server-side complexity rule
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(form.password)) {
+      setError("Password harus mengandung huruf besar, huruf kecil, dan angka.");
+      return;
+    }
 
     setIsLoading(true);
     try {

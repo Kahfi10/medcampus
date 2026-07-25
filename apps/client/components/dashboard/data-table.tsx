@@ -1,11 +1,12 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface Column<T> {
   key: string;
   label: string;
-  render?: (row: T) => React.ReactNode;
+  render?: (row: T) => ReactNode;
   className?: string;
 }
 

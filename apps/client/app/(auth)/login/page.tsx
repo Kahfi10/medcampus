@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { gsap } from "@/lib/gsap";
 import { Button } from "@/components/ui/button";
 
 export default function LoginPage() {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,11 +58,14 @@ export default function LoginPage() {
       localStorage.setItem("refreshToken", data.data.refreshToken);
       localStorage.setItem("user", JSON.stringify(data.data.user));
 
-      // Redirect berdasarkan role
+      // Redirect berdasarkan role — MED-10: use Next.js router instead of window.location.href
       const role = data.data.user.role;
-      if (role === "ADMIN") window.location.href = "/dashboard/admin";
-      else if (role === "DOKTER") window.location.href = "/dashboard/dokter";
-      else window.location.href = "/dashboard/pasien";
+      const redirectMap: Record<string, string> = {
+        ADMIN: "/dashboard/admin",
+        DOKTER: "/dashboard/dokter",
+        PASIEN: "/dashboard/pasien",
+      };
+      router.replace(redirectMap[role] || "/login");
     } catch {
       setError("Tidak dapat terhubung ke server. Pastikan server berjalan.");
     } finally {

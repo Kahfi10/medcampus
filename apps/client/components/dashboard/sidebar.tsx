@@ -42,6 +42,16 @@ const NAV_ADMIN = [
     ),
   },
   {
+    label: "Semua Kunjungan",
+    href: "/dashboard/admin/kunjungan",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect x="2" y="3" width="14" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M6 1v4M12 1v4M2 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     label: "Audit Log",
     href: "/dashboard/admin/audit",
     icon: (
@@ -161,6 +171,15 @@ export default function Sidebar({ user, onLogout, onClose }: SidebarProps) {
   const pathname = usePathname();
   const navItems = NAV_MAP[user.role];
 
+  // MED-08: active state works for exact match AND sub-routes
+  const isActive = (href: string) => {
+    if (pathname === href) return true;
+    // Match sub-routes but not cross-role collisions (e.g. /dashboard/admin vs /dashboard/admin/users)
+    const dashboardRoots = ["/dashboard/admin", "/dashboard/dokter", "/dashboard/pasien"];
+    if (dashboardRoots.includes(href)) return pathname === href;
+    return pathname.startsWith(href + "/");
+  };
+
   return (
     <aside className="w-[240px] flex-shrink-0 h-screen bg-white border-r border-[#F0F0F5] flex flex-col">
       {/* Logo */}
@@ -204,7 +223,6 @@ export default function Sidebar({ user, onLogout, onClose }: SidebarProps) {
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
             return (
               <li key={item.href}>
                 <Link
@@ -212,12 +230,12 @@ export default function Sidebar({ user, onLogout, onClose }: SidebarProps) {
                   onClick={() => onClose?.()}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-150",
-                    isActive
+                    isActive(item.href)
                       ? "bg-[#0066CC] text-white shadow-sm"
                       : "text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-[#F5F5F7]"
                   )}
                 >
-                  <span className={cn("flex-shrink-0", isActive ? "text-white" : "text-[#6E6E73]")}>
+                  <span className={cn("flex-shrink-0", isActive(item.href) ? "text-white" : "text-[#6E6E73]")}>
                     {item.icon}
                   </span>
                   {item.label}
