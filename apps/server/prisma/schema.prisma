@@ -1,0 +1,122 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  nama      String    @db.VarChar(100)
+  email     String    @unique @db.VarChar(150)
+  password  String    @db.VarChar(255) // bcrypt hashed — NEVER plaintext
+  role      Role      @default(PASIEN)
+  nim       String?   @db.VarChar(20)
+  nip       String?   @db.VarChar(20)
+  telepon   String?   @db.VarChar(20)
+  golDarah  String?   @db.VarChar(3)
+  alergi    String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime? // soft delete
+
+  kunjungan  Kunjungan[]  @relation("PasienKunjungan")
+  rekamMedis RekamMedis[] @relation("DokterRekamMedis")
+  auditLogs  AuditLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+enum Role {
+  ADMIN
+  DOKTER
+  PASIEN
+}
+
+model Kunjungan {
+  id        String          @id @default(cuid())
+  pasienId  String
+  pasien    User            @relation("PasienKunjungan", fields: [pasienId], references: [id])
+  tanggal   DateTime
+  keluhan   String          @db.Text
+  status    StatusKunjungan @default(MENUNGGU)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  rekamMedis RekamMedis?
+
+  @@index([pasienId])
+  @@index([status])
+  @@index([tanggal])
+}
+
+enum StatusKunjungan {
+  MENUNGGU
+  DIPROSES
+  SELESAI
+  DIBATALKAN
+}
+
+model RekamMedis {
+  id          String    @id @default(cuid())
+  kunjunganId String    @unique
+  kunjungan   Kunjungan @relation(fields: [kunjunganId], references: [id])
+  dokterId    String
+  dokter      User      @relation("DokterRekamMedis", fields: [dokterId], references: [id])
+  diagnosa    String    @db.Text
+  tindakan    String    @db.Text
+  catatan     String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  resepObat ResepObat[]
+
+  @@index([dokterId])
+  @@index([kunjunganId])
+}
+
+model Obat {
+  id        String    @id @default(cuid())
+  nama      String    @db.VarChar(150)
+  satuan    String    @db.VarChar(30)
+  stok      Int       @default(0)
+  deletedAt DateTime?
+
+  resepObat ResepObat[]
+
+  @@index([nama])
+}
+
+model ResepObat {
+  id           String     @id @default(cuid())
+  rekamMedisId String
+  rekamMedis   RekamMedis @relation(fields: [rekamMedisId], references: [id])
+  obatId       String
+  obat         Obat       @relation(fields: [obatId], references: [id])
+  jumlah       Int
+  aturanPakai  String     @db.VarChar(200)
+
+  @@index([rekamMedisId])
+  @@index([obatId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  aksi      String   @db.VarChar(60)
+  detail    String?  @db.Text
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.VarChar(300)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([aksi])
+  @@index([createdAt])
+}
