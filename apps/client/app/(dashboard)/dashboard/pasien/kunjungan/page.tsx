@@ -7,6 +7,7 @@ import DataTable from "@/components/dashboard/data-table";
 import Modal from "@/components/dashboard/modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { apiFetch } from "@/lib/auth";
 
 const STATUS_BADGE: Record<string, any> = {
@@ -18,48 +19,60 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function PasienKunjunganPage() {
   const { user, loading } = useAuth({ requiredRole: "PASIEN" });
+  const toast = useToast();
   const [data, setData] = useState<any[]>([]);
+  const [filtered, setFiltered] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({ tanggal: "", keluhan: "" });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("SEMUA");
 
   const fetchData = async () => {
     setLoadingData(true);
     try {
       const res = await apiFetch<any>("/api/kunjungan/saya");
       setData(res.data || []);
-    } catch { } finally { setLoadingData(false); }
+    } catch (err: any) {
+      toast.error("Gagal memuat data", err.message);
+    } finally { setLoadingData(false); }
   };
 
   useEffect(() => { if (user) fetchData(); }, [user]);
 
+  useEffect(() => {
+    let result = data;
+    if (statusFilter !== "SEMUA") result = result.filter(k => k.status === statusFilter);
+    if (search) result = result.filter(k => k.keluhan.toLowerCase().includes(search.toLowerCase()));
+    setFiltered(result);
+  }, [data, statusFilter, search]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(""); setSubmitting(true);
+    setSubmitting(true);
     try {
       await apiFetch("/api/kunjungan", {
         method: "POST",
         body: JSON.stringify({ tanggal: form.tanggal, keluhan: form.keluhan }),
       });
-      setSuccessMsg("Kunjungan berhasil dibuat!");
+      toast.success("Kunjungan berhasil dibuat!", "Kunjungan kamu sedang menunggu konfirmasi dokter.");
       setModalOpen(false);
       setForm({ tanggal: "", keluhan: "" });
       fetchData();
-      setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err: any) {
-      setError(err.message || "Gagal membuat kunjungan.");
+      toast.error("Gagal membuat kunjungan", err.message);
     } finally { setSubmitting(false); }
   };
 
   const handleBatalkan = async (id: string) => {
-    if (!confirm("Batalkan kunjungan ini?")) return;
     try {
       await apiFetch(`/api/kunjungan/${id}`, { method: "DELETE" });
+      toast.success("Kunjungan dibatalkan");
       fetchData();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) {
+      toast.error("Gagal membatalkan", err.message);
+    }
   };
 
   const columns = [
@@ -85,25 +98,42 @@ export default function PasienKunjunganPage() {
   return (
     <>
       <DashboardHeader user={user} title="Kunjungan Saya" subtitle="Riwayat dan daftar kunjungan ke klinik" />
-      <div className="flex-1 overflow-y-auto p-8">
-        {successMsg && (
-          <div className="mb-4 bg-[#EDFAF3] border border-[#30B86A]/20 rounded-xl px-4 py-3 text-[14px] text-[#30B86A] font-medium">{successMsg}</div>
-        )}
+      <div className="flex-1 overflow-y-auto p-6 lg:p-8">
         <div className="bg-white rounded-[16px] border border-[#F0F0F5] overflow-hidden">
-          <div className="px-6 py-4 border-b border-[#F0F0F5] flex items-center justify-between">
+          {/* Toolbar */}
+          <div className="px-6 py-4 border-b border-[#F0F0F5] flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
             <div>
               <h2 className="text-[16px] font-semibold text-[#1D1D1F]">Semua Kunjungan</h2>
-              <p className="text-[13px] text-[#6E6E73]">{data.length} total kunjungan</p>
+              <p className="text-[13px] text-[#6E6E73]">{filtered.length} dari {data.length} kunjungan</p>
             </div>
-            <Button onClick={() => setModalOpen(true)}>+ Buat Kunjungan</Button>
+            <div className="flex flex-wrap gap-2">
+              {/* Search */}
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Cari keluhan..."
+                className="h-9 px-3 rounded-xl border border-[#D8D8DC] bg-[#F5F5F7] text-[13px] focus:outline-none focus:ring-2 focus:ring-[#0066CC]/30 w-[180px]"
+              />
+              {/* Status filter */}
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                className="h-9 px-3 rounded-xl border border-[#D8D8DC] bg-[#F5F5F7] text-[13px] focus:outline-none focus:ring-2 focus:ring-[#0066CC]/30"
+              >
+                <option value="SEMUA">Semua Status</option>
+                {Object.entries(STATUS_LABEL).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+              <Button size="sm" onClick={() => setModalOpen(true)}>+ Buat Kunjungan</Button>
+            </div>
           </div>
-          <DataTable columns={columns} data={data} loading={loadingData} emptyText="Belum ada kunjungan." />
+          <DataTable columns={columns} data={filtered} loading={loadingData} emptyText="Belum ada kunjungan." />
         </div>
       </div>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Buat Kunjungan Baru">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="bg-[#FFF0EF] border border-[#FF3B30]/20 rounded-xl px-4 py-3 text-[14px] text-[#FF3B30]">{error}</div>}
           <div>
             <label className="block text-[13px] font-semibold text-[#1D1D1F] mb-1.5">Tanggal Kunjungan</label>
             <input type="date" required min={new Date().toISOString().split("T")[0]} value={form.tanggal}

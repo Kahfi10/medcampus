@@ -154,16 +154,17 @@ const ROLE_COLOR = {
 interface SidebarProps {
   user: AuthUser;
   onLogout: () => void;
+  onClose?: () => void;
 }
 
-export default function Sidebar({ user, onLogout }: SidebarProps) {
+export default function Sidebar({ user, onLogout, onClose }: SidebarProps) {
   const pathname = usePathname();
   const navItems = NAV_MAP[user.role];
 
   return (
-    <aside className="w-[240px] flex-shrink-0 h-screen sticky top-0 bg-white border-r border-[#F0F0F5] flex flex-col">
+    <aside className="w-[240px] flex-shrink-0 h-screen bg-white border-r border-[#F0F0F5] flex flex-col">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-[#F0F0F5]">
+      <div className="px-5 py-5 border-b border-[#F0F0F5] flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-8 h-8 rounded-lg bg-[#0066CC] flex items-center justify-center group-hover:bg-[#0077ED] transition-colors flex-shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -172,6 +173,14 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
           </div>
           <span className="font-bold text-[17px] text-[#1D1D1F] tracking-tight">MedCampus</span>
         </Link>
+        {/* Close button — mobile only */}
+        {onClose && (
+          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg hover:bg-[#F5F5F7] text-[#6E6E73]">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* User info */}
@@ -200,6 +209,7 @@ export default function Sidebar({ user, onLogout }: SidebarProps) {
               <li key={item.href}>
                 <Link
                   href={item.href}
+                  onClick={() => onClose?.()}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-[14px] font-medium transition-all duration-150",
                     isActive
