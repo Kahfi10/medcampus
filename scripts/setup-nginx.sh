@@ -57,9 +57,9 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # Next.js Client — semua path lainnya
+    # Next.js Client — semua path lainnya (port 4000, bukan 3000)
     location / {
-        proxy_pass         http://127.0.0.1:3000;
+        proxy_pass         http://127.0.0.1:4000;
         proxy_http_version 1.1;
         proxy_set_header   Upgrade \$http_upgrade;
         proxy_set_header   Connection 'upgrade';
