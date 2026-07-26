@@ -274,16 +274,25 @@ GET   /health               Status server & database
 
 ---
 
-## 📋 UTS Documentation
+## 🌍 Akses Aplikasi
 
-Proyek ini adalah bagian dari UTS mata kuliah **Secure Software Development Lifecycle (DevSecOps)** — Universitas Muhammadiyah Makassar.
+Aplikasi sudah live dan dapat diakses di:
 
-| Dokumen | Deskripsi |
-|---------|-----------|
-| [`PRD.docx`](docs/docx/PRD.docx) | Product Requirements Document |
-| [`UTS-LAPORAN-LENGKAP.docx`](docs/docx/UTS-LAPORAN-LENGKAP.docx) | Laporan UTS (BAB I–IX) |
-| [`SAST-REPORT.docx`](docs/docx/SAST-REPORT.docx) | Static Application Security Testing |
-| [`SCA-REPORT.docx`](docs/docx/SCA-REPORT.docx) | Software Composition Analysis |
+<div align="center">
+
+| Halaman | URL |
+|---------|-----|
+| 🏠 **Landing Page** | [medcampus.duckdns.org](https://medcampus.duckdns.org) |
+| 🔐 **Login** | [medcampus.duckdns.org/login](https://medcampus.duckdns.org/login) |
+| 📝 **Register** | [medcampus.duckdns.org/register](https://medcampus.duckdns.org/register) |
+| 💊 **Dashboard Admin** | [medcampus.duckdns.org/dashboard/admin](https://medcampus.duckdns.org/dashboard/admin) |
+| 🩺 **Dashboard Dokter** | [medcampus.duckdns.org/dashboard/dokter](https://medcampus.duckdns.org/dashboard/dokter) |
+| 🧑 **Dashboard Pasien** | [medcampus.duckdns.org/dashboard/pasien](https://medcampus.duckdns.org/dashboard/pasien) |
+| ✅ **Health Check** | [medcampus.duckdns.org/health](https://medcampus.duckdns.org/health) |
+
+</div>
+
+> Untuk mendapatkan akses, hubungi administrator sistem.
 
 ---
 
