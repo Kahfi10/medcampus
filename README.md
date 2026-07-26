@@ -345,38 +345,6 @@ Obat & Audit
 
 ---
 
-## 🚀 Deploy Production
-
-### Automated Deploy
-```bash
-# Di server Oracle Cloud
-git clone https://github.com/Kahfi10/medcampus.git /var/www/medcampus
-bash /var/www/medcampus/scripts/setup-server.sh   # Install Node, PM2, Nginx
-bash /var/www/medcampus/scripts/deploy.sh          # Build & start
-bash /var/www/medcampus/scripts/setup-nginx.sh yourdomain.duckdns.org
-sudo certbot --nginx -d yourdomain.duckdns.org     # SSL
-```
-
-### Update / Redeploy
-```bash
-bash /var/www/medcampus/scripts/update.sh
-```
-
----
-
-## 📊 PM2 Management
-
-```bash
-pm2 list                        # Status semua proses
-pm2 logs medcampus-server       # Log server
-pm2 logs medcampus-client       # Log client
-pm2 monit                       # Dashboard real-time
-pm2 restart all                 # Restart semua
-pm2 reload all                  # Zero-downtime reload
-```
-
----
-
 ## 📋 UTS Documentation
 
 Proyek ini adalah bagian dari UTS mata kuliah **Secure Software Development Lifecycle (DevSecOps)** di Universitas Muhammadiyah Makassar.
@@ -396,7 +364,7 @@ Proyek ini adalah bagian dari UTS mata kuliah **Secure Software Development Life
 
 | Nama | NIM | Role |
 |------|-----|------|
-| Ahmad Kahfi | 105841100121 | Full-Stack Developer |
+| Ashabul Kahfi | 105841100121 | Full-Stack Developer |
 | [Anggota 2] | [NIM] | Security & Documentation |
 | [Anggota 3] | [NIM] | UI/UX & Frontend |
 | [Anggota 4] | [NIM] | DevOps & Deployment |
