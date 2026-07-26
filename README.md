@@ -365,9 +365,9 @@ Proyek ini adalah bagian dari UTS mata kuliah **Secure Software Development Life
 | Nama | NIM | Role |
 |------|-----|------|
 | Ashabul Kahfi | 105841100121 | Full-Stack Developer |
-| [Anggota 2] | [NIM] | Security & Documentation |
-| [Anggota 3] | [NIM] | UI/UX & Frontend |
-| [Anggota 4] | [NIM] | DevOps & Deployment |
+| Marhepi Rahmadani | 105841109523 | Security & Documentation |
+| Afra Muawiya | 105841108423 | UI/UX & Frontend |
+| Alyah Saputri Bakri | 105841107723 | DevOps & Deployment |
 
 **Universitas Muhammadiyah Makassar**  
 Fakultas Teknik — Program Studi Informatika  
