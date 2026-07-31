@@ -1,20 +1,23 @@
 import "dotenv/config";
 import app from "./app";
 import { prisma } from "./utils/prisma";
+import { runCleanupJobs } from "./jobs/cleanup";
 
 const PORT = Number(process.env.PORT) || 5000;
 
 async function main() {
-  // Test DB connection
   await prisma.$connect();
-  console.log("✓ Database connected");
+  console.log("[OK] Database connected");
 
   app.listen(PORT, () => {
-    console.log(`✓ Server running on http://localhost:${PORT}`);
-    console.log(`  Environment: ${process.env.NODE_ENV || "development"}`);
-    console.log(`  API docs:    http://localhost:${PORT}/api-docs`);
-    console.log(`  Health:      http://localhost:${PORT}/health`);
+    console.log(`[OK] Server running on http://localhost:${PORT}`);
+    console.log(`     Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`     Health:      http://localhost:${PORT}/health`);
   });
+
+  // Stage 6: run cleanup job on startup + every 6 hours
+  await runCleanupJobs();
+  setInterval(() => runCleanupJobs(), 6 * 60 * 60 * 1000);
 }
 
 main().catch((err) => {
@@ -22,7 +25,6 @@ main().catch((err) => {
   process.exit(1);
 });
 
-// Graceful shutdown
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received — shutting down gracefully");
   await prisma.$disconnect();

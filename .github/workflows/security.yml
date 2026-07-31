@@ -1,0 +1,99 @@
+name: Security Scan (SAST + SCA)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  sca-audit:
+    name: SCA — npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: SCA — Server audit
+        run: npm audit --workspace=apps/server --audit-level=high
+        continue-on-error: true
+
+      - name: SCA — Client audit
+        run: npm audit --workspace=apps/client --audit-level=critical
+        continue-on-error: true
+
+  sast-eslint:
+    name: SAST — ESLint Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: SAST — Server ESLint Security scan
+        run: |
+          cd apps/server
+          npx eslint src --ext .ts \
+            --rule 'security/detect-object-injection: warn' \
+            --rule 'security/detect-non-literal-fs-filename: warn' \
+            --rule 'security/detect-unsafe-regex: error' \
+            --format json --output-file sast-server-results.json || true
+        continue-on-error: true
+
+      - name: SAST — TypeScript type check (server)
+        run: |
+          cd apps/server
+          npx tsc --noEmit
+
+      - name: SAST — TypeScript type check (client)
+        run: |
+          cd apps/client
+          npx tsc --noEmit
+
+      - name: Upload SAST results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-results
+          path: apps/server/sast-server-results.json
+
+  semgrep:
+    name: SAST — Semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config "p/typescript" \
+            --config "p/nodejs" \
+            --config "p/owasp-top-ten" \
+            --config "p/jwt" \
+            --json \
+            --output semgrep-results.json \
+            apps/server/src || true
+
+      - name: Upload Semgrep results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: semgrep-results
+          path: semgrep-results.json

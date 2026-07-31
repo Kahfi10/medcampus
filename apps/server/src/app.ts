@@ -13,6 +13,7 @@ import rekamMedisRoutes from "./routes/rekam-medis.routes";
 import obatRoutes from "./routes/obat.routes";
 import auditRoutes from "./routes/audit.routes";
 import healthRoutes from "./routes/health.routes";
+import twofaRoutes from "./routes/twofa.routes"; // Stage 7: 2FA
 
 const app = express();
 
@@ -103,6 +104,7 @@ if (process.env.NODE_ENV !== "test") {
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use("/health", healthRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/2fa", twofaRoutes);    // Stage 7
 app.use("/api/users", userRoutes);
 app.use("/api/kunjungan", kunjunganRoutes);
 app.use("/api/rekam-medis", rekamMedisRoutes);

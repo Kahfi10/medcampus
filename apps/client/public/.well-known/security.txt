@@ -1,0 +1,6 @@
+Contact: mailto:105841100121@student.unismuh.ac.id
+Expires: 2027-07-31T00:00:00.000Z
+Preferred-Languages: id, en
+Canonical: https://medcampus.duckdns.org/.well-known/security.txt
+Policy: https://medcampus.duckdns.org/security-policy
+Acknowledgments: https://medcampus.duckdns.org/thanks

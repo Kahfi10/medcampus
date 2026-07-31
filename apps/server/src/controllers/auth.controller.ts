@@ -15,6 +15,7 @@ import {
   revokeRefreshToken,
   revokeAllUserTokens,
 } from "../utils/token";
+import { verifyPassword, hashPasswordSafe } from "../utils/password";
 
 const SALT_ROUNDS = 12;
 
@@ -59,7 +60,8 @@ export async function register(req: Request, res: Response): Promise<void> {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) throw new AppError(409, "Email sudah terdaftar. Gunakan email lain.");
 
-  const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+  // Stage 7: use argon2 (with bcrypt fallback)
+  const hashedPassword = await hashPasswordSafe(password);
 
   const user = await prisma.user.create({
     data: { nama, email, password: hashedPassword, role: "PASIEN", nim: nim ?? null, telepon: telepon ?? null },
@@ -121,7 +123,8 @@ export async function login(req: Request, res: Response): Promise<void> {
     throw new AppError(423, "Akun terkunci sementara. Coba lagi nanti.");
   }
 
-  const passwordMatch = await bcrypt.compare(password, user.password);
+  // Stage 7: verifyPassword supports bcrypt AND argon2 (lazy migration)
+  const { match: passwordMatch, needsRehash } = await verifyPassword(password, user.password);
   if (!passwordMatch) {
     // Stage 3: increment failedLoginAttempts
     const newFailedAttempts = user.failedLoginAttempts + 1;
@@ -155,7 +158,12 @@ export async function login(req: Request, res: Response): Promise<void> {
   // Stage 3: reset counter on success
   await prisma.user.update({
     where: { id: user.id },
-    data: { failedLoginAttempts: 0, lockedUntil: null },
+    data: {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      // Stage 7: lazy migrate bcrypt → argon2 transparently
+      ...(needsRehash ? { password: await hashPasswordSafe(password) } : {}),
+    },
   });
 
   await createAuditLog({
@@ -286,10 +294,12 @@ export async function changePassword(req: AuthRequest, res: Response): Promise<v
   const user = await prisma.user.findUnique({ where: { id: req.user!.userId } });
   if (!user) throw new AppError(404, "User tidak ditemukan.");
 
-  const match = await bcrypt.compare(oldPassword, user.password);
+  // Stage 7: verifyPassword supports both bcrypt and argon2
+  const { match } = await verifyPassword(oldPassword, user.password);
   if (!match) throw new AppError(401, "Password lama tidak benar.");
 
-  const hashed = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  // Stage 7: use argon2 for new passwords
+  const hashed = await hashPasswordSafe(newPassword);
   await prisma.user.update({ where: { id: user.id }, data: { password: hashed } });
 
   // Revoke semua refresh token — paksa login ulang di semua device
