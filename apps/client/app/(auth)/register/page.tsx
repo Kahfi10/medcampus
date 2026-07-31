@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { gsap } from "@/lib/gsap";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/auth";
 
 export default function RegisterPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,30 +57,20 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/auth/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nama: form.nama,
-            email: form.email,
-            password: form.password,
-            nim: form.nim || undefined,
-            telepon: form.telepon || undefined,
-          }),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || "Pendaftaran gagal.");
-        return;
-      }
-
+      // Stage 2: apiFetch dengan credentials: "include" — server set httpOnly cookie
+      await apiFetch("/api/auth/register", {
+        method: "POST",
+        body: JSON.stringify({
+          nama: form.nama,
+          email: form.email,
+          password: form.password,
+          nim: form.nim || undefined,
+          telepon: form.telepon || undefined,
+        }),
+      });
       setSuccess(true);
-    } catch {
-      setError("Tidak dapat terhubung ke server.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Tidak dapat terhubung ke server.");
     } finally {
       setIsLoading(false);
     }

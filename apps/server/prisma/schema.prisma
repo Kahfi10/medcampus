@@ -21,13 +21,17 @@ model User {
   telepon   String?   @db.VarChar(20)
   golDarah  String?   @db.VarChar(3)
   alergi    String?   @db.Text
+  // Stage 3: account lockout fields
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime? // soft delete
 
-  kunjungan  Kunjungan[]  @relation("PasienKunjungan")
-  rekamMedis RekamMedis[] @relation("DokterRekamMedis")
-  auditLogs  AuditLog[]
+  kunjungan     Kunjungan[]    @relation("PasienKunjungan")
+  rekamMedis    RekamMedis[]   @relation("DokterRekamMedis")
+  auditLogs     AuditLog[]
+  refreshTokens RefreshToken[] // Stage 2
 
   @@index([email])
   @@index([role])
@@ -119,4 +123,20 @@ model AuditLog {
   @@index([userId])
   @@index([aksi])
   @@index([createdAt])
+}
+
+// Stage 2: Refresh token blacklist + rotation tracking
+model RefreshToken {
+  id        String    @id @default(cuid())
+  jti       String    @unique @db.VarChar(36) // UUID jti dari JWT
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @db.VarChar(64)  // SHA-256 hash token — tidak simpan raw token
+  expiresAt DateTime
+  revokedAt DateTime? // null = masih valid
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([jti])
+  @@index([expiresAt])
 }

@@ -8,26 +8,38 @@ export interface AuthRequest extends Request {
     userId: string;
     email: string;
     role: string;
+    jti?: string;
   };
 }
 
-/** Verify JWT and attach user to request */
+/**
+ * Stage 2: Verify JWT from httpOnly cookie OR Authorization header
+ * Priority: cookie > header (cookie is more secure)
+ */
 export async function authenticate(
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> {
-  const authHeader = req.headers.authorization;
+  // Stage 2: read from httpOnly cookie first, fallback to Authorization header
+  let token: string | undefined;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (req.cookies?.accessToken) {
+    token = req.cookies.accessToken;
+  } else {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+  }
+
+  if (!token) {
     res.status(401).json({ success: false, message: "Token tidak ditemukan." });
     return;
   }
 
-  const token = authHeader.split(" ")[1];
-
   try {
-    // Stage 1 Fix: verify with explicit algorithm to prevent algorithm confusion
+    // Stage 1 Fix: explicit algorithm to prevent algorithm confusion attack
     const payload = jwt.verify(token, process.env.JWT_SECRET!, {
       algorithms: ["HS256"],
       issuer: "medcampus-api",
@@ -39,7 +51,7 @@ export async function authenticate(
       role: string;
     };
 
-    // Check user still exists and not soft-deleted
+    // Check user still exists, not soft-deleted, and not locked (Stage 3)
     const user = await prisma.user.findFirst({
       where: { id: payload.userId, deletedAt: null },
       select: { id: true, email: true, role: true },
@@ -50,7 +62,7 @@ export async function authenticate(
       return;
     }
 
-    req.user = { userId: user.id, email: user.email, role: user.role };
+    req.user = { userId: user.id, email: user.email, role: user.role, jti: payload.jti };
     next();
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
@@ -74,11 +86,10 @@ export function authorize(...roles: string[]) {
     }
 
     if (!roles.includes(req.user.role)) {
-      // Log access denied
       await createAuditLog({
         userId: req.user.userId,
         aksi: "ACCESS_DENIED",
-        detail: `Attempted to access ${req.method} ${req.path} with role ${req.user.role}`,
+        detail: `Attempted ${req.method} ${req.path} with role ${req.user.role}`,
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
       });

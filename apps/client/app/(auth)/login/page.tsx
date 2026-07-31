@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { gsap } from "@/lib/gsap";
 import { Button } from "@/components/ui/button";
-
+import { apiFetch, setUser } from "@/lib/auth";
 export default function LoginPage() {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -37,28 +37,18 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/auth/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        }
+      // Stage 2: gunakan apiFetch dengan credentials: "include"
+      // Server akan set httpOnly cookies otomatis di response
+      const data = await apiFetch<{ data: { user: { role: string; [key: string]: unknown } } }>(
+        "/api/auth/login",
+        { method: "POST", body: JSON.stringify(form) }
       );
 
-      const data = await res.json();
+      // Stage 2: TIDAK lagi simpan token di localStorage
+      // Token ada di httpOnly cookie yang diset oleh server
+      // Hanya simpan user profile (non-sensitive)
+      setUser(data.data.user as never);
 
-      if (!res.ok) {
-        setError(data.message || "Login gagal.");
-        return;
-      }
-
-      // Simpan token
-      localStorage.setItem("accessToken", data.data.accessToken);
-      localStorage.setItem("refreshToken", data.data.refreshToken);
-      localStorage.setItem("user", JSON.stringify(data.data.user));
-
-      // Redirect berdasarkan role — MED-10: use Next.js router instead of window.location.href
       const role = data.data.user.role;
       const redirectMap: Record<string, string> = {
         ADMIN: "/dashboard/admin",
@@ -66,8 +56,8 @@ export default function LoginPage() {
         PASIEN: "/dashboard/pasien",
       };
       router.replace(redirectMap[role] || "/login");
-    } catch {
-      setError("Tidak dapat terhubung ke server. Pastikan server berjalan.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Login gagal.");
     } finally {
       setIsLoading(false);
     }

@@ -1,4 +1,8 @@
-// Auth utilities — client side token management
+/**
+ * Stage 2: Auth utilities — cookie-based authentication
+ * Token sekarang disimpan di httpOnly cookies oleh server.
+ * Client hanya menyimpan user profile (non-sensitive) di localStorage.
+ */
 
 export interface AuthUser {
   id: string;
@@ -8,16 +12,12 @@ export interface AuthUser {
   nim?: string;
   nip?: string;
   telepon?: string;
-  // MED-01 fix: add missing fields
   golDarah?: string;
   alergi?: string;
 }
 
-export function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("accessToken");
-}
-
+// Stage 2: TIDAK lagi simpan token di localStorage
+// Token ada di httpOnly cookie yang dikelola browser otomatis
 export function getUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
   try {
@@ -29,32 +29,42 @@ export function getUser(): AuthUser | null {
   }
 }
 
+export function setUser(user: AuthUser): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("user", JSON.stringify(user));
+}
+
 export function clearAuth(): void {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
+  if (typeof window === "undefined") return;
+  // Hanya hapus user profile dari localStorage
+  // Token (httpOnly cookie) akan di-clear oleh server via Set-Cookie
   localStorage.removeItem("user");
 }
 
 export function isAuthenticated(): boolean {
-  return !!getToken() && !!getUser();
+  return !!getUser();
 }
 
 export const API_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+/**
+ * Stage 2: apiFetch dengan credentials: "include"
+ * Browser otomatis kirim httpOnly cookies ke server
+ * Tidak perlu lagi tambah Authorization header secara manual
+ */
 export async function apiFetch<T = unknown>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
-  const token = getToken();
   const hasBody = !!options?.body;
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: "include", // Stage 2: kirim httpOnly cookies otomatis
     headers: {
-      // MED-16 fix: only send Content-Type when request has a body
+      // Stage 1: hanya kirim Content-Type kalau ada body
       ...(hasBody ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });

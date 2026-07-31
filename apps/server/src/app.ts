@@ -4,6 +4,7 @@ import cors from "cors";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import hpp from "hpp";
+import cookieParser from "cookie-parser"; // Stage 2: parse httpOnly cookies
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
@@ -44,8 +45,10 @@ app.use(
 );
 
 // ─── Stage 1 Fix: HPP — HTTP Parameter Pollution protection ───────────────────
-// Mencegah ?role=PASIEN&role=ADMIN dan sejenisnya
 app.use(hpp());
+
+// ─── Stage 2: Cookie parser (untuk httpOnly cookie auth) ──────────────────────
+app.use(cookieParser());
 
 // ─── CORS — whitelist only client origin ─────────────────────────────────────
 const ALLOWED_ORIGINS = (
