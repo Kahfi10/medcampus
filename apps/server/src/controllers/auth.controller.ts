@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { validationResult } from "express-validator";
 import { prisma } from "../utils/prisma";
 import { createAuditLog } from "../utils/audit";
@@ -9,20 +10,30 @@ import { AuthRequest } from "../middleware/auth.middleware";
 
 const SALT_ROUNDS = 12;
 
+// Stage 1 Fix: explicit algorithm, jti, iss, aud claims
 function generateTokens(userId: string, email: string, role: string) {
+  const accessJti = crypto.randomUUID();
+  const refreshJti = crypto.randomUUID();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const signOpts = (exp: string): any => ({ expiresIn: exp });
-  const accessToken = jwt.sign(
-    { userId, email, role },
+  const sign = (payload: object, secret: string, exp: string, aud: string): string =>
+    jwt.sign(payload, secret, { expiresIn: exp, algorithm: "HS256", issuer: "medcampus-api", audience: aud } as any);
+
+  const accessToken = sign(
+    { jti: accessJti, userId, email, role },
     process.env.JWT_SECRET!,
-    signOpts(process.env.JWT_EXPIRES_IN || "1h")
+    process.env.JWT_EXPIRES_IN || "1h",
+    "medcampus-client"
   );
-  const refreshToken = jwt.sign(
-    { userId, email, role },
+
+  const refreshToken = sign(
+    { jti: refreshJti, userId, email, role },
     process.env.JWT_REFRESH_SECRET!,
-    signOpts(process.env.JWT_REFRESH_EXPIRES_IN || "7d")
+    process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+    "medcampus-refresh"
   );
-  return { accessToken, refreshToken };
+
+  return { accessToken, refreshToken, accessJti, refreshJti };
 }
 
 /** POST /api/auth/register */
@@ -45,13 +56,11 @@ export async function register(req: Request, res: Response): Promise<void> {
     telepon?: string;
   };
 
-  // Check duplicate email
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     throw new AppError(409, "Email sudah terdaftar. Gunakan email lain.");
   }
 
-  // Hash password — NEVER store plaintext
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
@@ -76,7 +85,7 @@ export async function register(req: Request, res: Response): Promise<void> {
   await createAuditLog({
     userId: user.id,
     aksi: "REGISTER",
-    detail: `New PASIEN account registered: ${email}`,
+    detail: `New PASIEN account registered`,
     ipAddress: req.ip,
     userAgent: req.headers["user-agent"],
   });
@@ -114,19 +123,21 @@ export async function login(req: Request, res: Response): Promise<void> {
   if (!user) {
     await createAuditLog({
       aksi: "LOGIN_FAILED",
-      detail: `Failed login attempt for email: ${email}`,
+      detail: `Failed login attempt`, // Stage 1 Fix: tidak log email untuk privacy
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
     });
     throw new AppError(401, INVALID_MSG);
   }
 
+  // Stage 3 TODO: cek account lockout (lockedUntil, failedLoginAttempts)
+
   const passwordMatch = await bcrypt.compare(password, user.password);
   if (!passwordMatch) {
     await createAuditLog({
       userId: user.id,
       aksi: "LOGIN_FAILED",
-      detail: `Wrong password for: ${email}`,
+      detail: `Wrong password`,
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
     });
@@ -172,6 +183,7 @@ export async function logout(req: AuthRequest, res: Response): Promise<void> {
     });
   }
 
+  // Stage 2 TODO: blacklist the jti from the current token
   res.status(200).json({ success: true, message: "Logout berhasil." });
 }
 
@@ -184,13 +196,20 @@ export async function refreshToken(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as {
+    // Stage 1 Fix: verify with explicit algorithm
+    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET!, {
+      algorithms: ["HS256"],
+      issuer: "medcampus-api",
+      audience: "medcampus-refresh",
+    }) as {
+      jti: string;
       userId: string;
       email: string;
       role: string;
     };
 
-    // Ensure user still exists
+    // Stage 2 TODO: cek apakah jti sudah di-blacklist (token rotation)
+
     const user = await prisma.user.findFirst({
       where: { id: payload.userId, deletedAt: null },
       select: { id: true, email: true, role: true },

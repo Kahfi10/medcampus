@@ -27,7 +27,13 @@ export async function authenticate(
   const token = authHeader.split(" ")[1];
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+    // Stage 1 Fix: verify with explicit algorithm to prevent algorithm confusion
+    const payload = jwt.verify(token, process.env.JWT_SECRET!, {
+      algorithms: ["HS256"],
+      issuer: "medcampus-api",
+      audience: "medcampus-client",
+    }) as {
+      jti: string;
       userId: string;
       email: string;
       role: string;
