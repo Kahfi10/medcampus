@@ -47,8 +47,8 @@ export function clearAuthCookies(res: Response) {
 
 // ─── Refresh token blacklist ──────────────────────────────────────────────────
 
-/** Hash a token string for safe DB storage */
-function hashToken(token: string): string {
+/** Hash a token string for safe DB storage (exported for testing) */
+export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 

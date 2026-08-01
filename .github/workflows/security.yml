@@ -65,6 +65,11 @@ jobs:
           npx tsc --noEmit
         continue-on-error: true
 
+      # Unit Tests — encryption, password, token (no DB required)
+      - name: Unit Tests
+        run: npm test --workspace=apps/server
+        continue-on-error: true
+
       # TypeScript type check — client
       - name: TypeScript check (client)
         run: |
